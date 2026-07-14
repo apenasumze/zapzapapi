@@ -32,7 +32,6 @@ def test_transport_sends_single_request_with_auth_headers() -> None:
     assert calls[0].headers["x-api-secret"] == "secret"
     assert json.loads(calls[0].read()) == {
         "number": "5511999999999",
-        "delay": 1000,
         "replyid": "msg_0",
         "text": "Olá",
     }

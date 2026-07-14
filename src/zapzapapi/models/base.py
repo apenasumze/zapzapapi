@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict
 
 JsonObject = dict[str, Any]
 JsonValue = dict[str, Any] | list[Any] | str | int | float | bool | None
 
 
-class BaseModel(BaseModel):
+class BaseModel(PydanticBaseModel):
     """Modelo base dos contratos públicos da biblioteca."""
 
     model_config = ConfigDict(
@@ -27,4 +28,3 @@ class BaseModel(BaseModel):
         """
 
         return self.model_dump(by_alias=True, exclude_none=True)
-

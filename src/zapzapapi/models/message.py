@@ -15,7 +15,11 @@ class MediaType(str, Enum):
     IMAGE = "image"
     VIDEO = "video"
     AUDIO = "audio"
+    PTT = "ptt"
+    MYAUDIO = "myaudio"
+    PTV = "ptv"
     DOCUMENT = "document"
+    STICKER = "sticker"
 
 
 class StatusType(str, Enum):
@@ -25,14 +29,21 @@ class StatusType(str, Enum):
     IMAGE = "image"
     VIDEO = "video"
     AUDIO = "audio"
+    PTT = "ptt"
     
     
-class FontType(Enum):
-    SERIF = 1
-    NORICAN_REGULAR = 2
-    BRYNDAN_WRITE = 3
-    BEBASNEUE_REGULAR = 4
-    OSWALD_HEAVY = 5
+class FontType(str, Enum):
+    """Fontes aceitas pelo endpoint de status/story."""
+
+    FONT_0 = "0"
+    FONT_1 = "1"
+    FONT_2 = "2"
+    FONT_3 = "3"
+    FONT_4 = "4"
+    FONT_5 = "5"
+    FONT_6 = "6"
+    FONT_7 = "7"
+    FONT_8 = "8"
 
 
 class BaseMessage(BaseModel):
@@ -45,14 +56,8 @@ class BaseMessage(BaseModel):
     """
 
     number: str
-    delay: int = 1000
+    delay: int | None = None
     reply_id: str | None = Field(default=None, alias="replyid")
-
-
-class MentionableMessage(BaseMessage):
-    """Mensagem que pode mencionar contatos."""
-
-    mentions: list[str] | None = None
 
 
 class TextMessage(BaseMessage):
@@ -61,7 +66,7 @@ class TextMessage(BaseMessage):
     text: str
 
 
-class MediaMessage(MentionableMessage):
+class MediaMessage(BaseMessage):
     """Mensagem com mídia.
 
     Args:
@@ -76,6 +81,7 @@ class MediaMessage(MentionableMessage):
     file: str
     text: str | None = None
     doc_name: str | None = Field(default=None, alias="docName")
+    mentions: list[str] | None = None
 
 
 class ContactMessage(BaseMessage):
@@ -206,5 +212,5 @@ class StatusMessage(BaseModel):
     type: StatusType
     text: str | None = None
     background_color: str | None = None
-    font: str | None = None
+    font: FontType | None = None
     file: str | None = None
