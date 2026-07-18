@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from enum import Enum
+from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_serializer
 
 from zapzapapi.models.base import BaseModel
 
 
 class MediaType(str, Enum):
-    """Tipos de mídia aceitos pelo endpoint de envio de mídia."""
+    """Tipos de midia aceitos pelo endpoint de envio de midia."""
 
     IMAGE = "image"
     VIDEO = "video"
@@ -30,57 +32,97 @@ class StatusType(str, Enum):
     VIDEO = "video"
     AUDIO = "audio"
     PTT = "ptt"
-    
-    
+
+
 class FontType(str, Enum):
     """Fontes aceitas pelo endpoint de status/story."""
 
-    FONT_0 = "0"
-    FONT_1 = "1"
-    FONT_2 = "2"
-    FONT_3 = "3"
-    FONT_4 = "4"
-    FONT_5 = "5"
-    FONT_6 = "6"
-    FONT_7 = "7"
-    FONT_8 = "8"
+    SANS_SERIF = "0"
+    SERIF = "1"
+    NORICAN = "2"
+    BRYNDAN = "3"
+    BEBAS_NEUE = "4"
+    FUTURA_PT = "5"
+    ESTILO_6 = "6"
+    ESTILO_7 = "7"
+    ESTILO_8 = "8"
+
+
+class StatusBackgroundColor(str, Enum):
+    """Cores de fundo aceitas pelo endpoint de status/story."""
+
+    AMARELO = "1"
+    AMARELO_MEDIO = "2"
+    AMARELO_ESCURO = "3"
+    VERDE_CLARO = "4"
+    VERDE = "5"
+    VERDE_ESCURO = "6"
+    AZUL_CLARO = "7"
+    AZUL = "8"
+    AZUL_ESCURO = "9"
+    LILAS_CLARO = "10"
+    LILAS = "11"
+    LILAS_ESCURO = "12"
+    MAGENTA = "13"
+    ROSA_CLARO = "14"
+    ROSA = "15"
+    MARROM_CLARO = "16"
+    CINZA_CLARO = "17"
+    CINZA = "18"
+    CINZA_ESCURO = "19"
+
+
+class PixType(str, Enum):
+    """Tipos de chave PIX aceitos pela API."""
+
+    EMAIL = "EMAIL"
+    CPF = "CPF"
+    CNPJ = "CNPJ"
+    PHONE = "PHONE"
+    EVP = "EVP"
+
+
+class ReactionMessage(BaseModel):
+    """Reacao enviada para uma mensagem existente."""
+
+    number: str
+    message_id: str = Field(alias="id")
+    emoji: str
+
+
+class QuotedMessage(BaseModel):
+    """Mensagem citada/respondida em payloads que aceitam objeto quoted."""
+
+    key: dict[str, Any]
+    message: dict[str, Any] | None = None
 
 
 class BaseMessage(BaseModel):
-    """Campos comuns de mensagens destinadas a um número.
-
-    Args:
-        number: Número do destinatário em formato aceito pela ZapZapApi.
-        delay: Atraso opcional em milissegundos.
-        reply_id: Identificador da mensagem respondida.
-    """
+    """Campos comuns de mensagens destinadas a um numero."""
 
     number: str
-    delay: int | None = None
+    delay: int | None = 1000
     reply_id: str | None = Field(default=None, alias="replyid")
+    quoted: QuotedMessage | None = None
 
 
 class TextMessage(BaseMessage):
     """Mensagem de texto simples."""
 
     text: str
+    link_preview: bool | None = Field(default=None, alias="linkPreview")
+    mentions_every_one: bool | None = Field(default=None, alias="mentionsEveryOne")
+    mentioned: list[str] | None = None
 
 
 class MediaMessage(BaseMessage):
-    """Mensagem com mídia.
-
-    Args:
-        number: Número do destinatário.
-        type: Tipo de mídia.
-        file: URL ou conteúdo aceito pela API.
-        text: Legenda opcional.
-        doc_name: Nome do documento, quando aplicável.
-    """
+    """Mensagem com midia."""
 
     type: MediaType
-    file: str
-    text: str | None = None
-    doc_name: str | None = Field(default=None, alias="docName")
+    file: str  # URL ou caminho do arquivo
+    caption: str | None = Field(default=None, alias="text")  # Legenda do arquivo
+    # Nome do arquivo, obrigatorio para documentos.
+    file_name: str | None = Field(default=None, alias="docName")
     mentions: list[str] | None = None
 
 
@@ -94,7 +136,7 @@ class ContactMessage(BaseMessage):
 
 
 class LocationMessage(BaseMessage):
-    """Mensagem de localização."""
+    """Mensagem de localizacao."""
 
     latitude: float
     longitude: float
@@ -102,95 +144,137 @@ class LocationMessage(BaseMessage):
     address: str | None = None
 
 
-class LocationButtonMessage(BaseModel):
-    """Mensagem que solicita o envio de localização pelo destinatário."""
+class LocationButtonMessage(BaseMessage):
+    """Mensagem que solicita o envio de localizacao pelo destinatario."""
 
-    number: str
     text: str
 
 
 class Button(BaseModel):
-    """Botão de resposta."""
+    """Botao de resposta."""
 
-    id: str
     text: str
+    id: str | None = None
+    url: str | None = None
+    phone: str | None = None
+    copy_code: str | None = Field(default=None, alias="copy")
+    type: str | None = None
+
+
+def _button_payload(button: Button) -> dict[str, Any]:
+    raw_payload = button.to_payload()
+    ordered_keys = ("type", "text", "id", "url", "phone", "copy")
+    return {key: raw_payload[key] for key in ordered_keys if key in raw_payload}
 
 
 class ButtonsMessage(BaseMessage):
-    """Mensagem com botões de resposta."""
+    """Mensagem com botoes de resposta."""
 
     text: str
-    buttons: list[Button]
+    buttons: list[Button] | str
     image: str | None = None
     footer: str | None = None
 
+    @field_serializer("buttons")
+    def _serialize_buttons(self, buttons: list[Button] | str) -> str:
+        if isinstance(buttons, str):
+            return buttons
+        payload = [_button_payload(button) for button in buttons]
+        return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
 
 class ListChoice(BaseModel):
-    """Opção exibida em mensagem de lista."""
+    """Opcao exibida em mensagem de lista."""
 
     id: str
     title: str
     description: str | None = None
 
 
-class ListMessage(BaseModel):
-    """Mensagem com lista de opções."""
+class ListMessage(BaseMessage):
+    """Mensagem com lista de opcoes."""
 
-    number: str
+    delay: int | None = None
     text: str
-    choices: list[ListChoice]
+    choices: list[str] | str
     list_button: str | None = Field(default=None, alias="listButton")
     footer_text: str | None = Field(default=None, alias="footerText")
 
+    @field_serializer("choices")
+    def _serialize_choices(self, choices: list[str] | str) -> str:
+        if isinstance(choices, str):
+            return choices
+        return json.dumps(choices, ensure_ascii=False, separators=(",", ":"))
 
-class PollMessage(BaseModel):
+
+class PollMessage(BaseMessage):
     """Mensagem de enquete."""
 
-    number: str
+    delay: int | None = None
     text: str
-    choices: list[str]
-    selectable_count: int | None = Field(default=None, alias="selectableCount")
+    choices: list[str] | str
+    selectable_count: int | str | None = Field(default=None, alias="selectableCount")
+
+    @field_serializer("choices")
+    def _serialize_choices(self, choices: list[str] | str) -> str:
+        if isinstance(choices, str):
+            return choices
+        return json.dumps(choices, ensure_ascii=False, separators=(",", ":"))
+
+    @field_serializer("selectable_count")
+    def _serialize_selectable_count(self, selectable_count: int | str | None) -> str | None:
+        if selectable_count is None:
+            return None
+        return str(selectable_count)
 
 
 class CarouselCard(BaseModel):
     """Card de carrossel."""
 
-    title: str
-    text: str | None = None
+    text: str
     image: str | None = None
     buttons: list[Button] | None = None
 
 
-class CarouselMessage(BaseModel):
+class CarouselMessage(BaseMessage):
     """Mensagem de carrossel."""
 
-    number: str
     text: str
-    carousel: list[CarouselCard]
-    delay: int | None = None
+    carousel: list[CarouselCard] | str
+
+    @field_serializer("carousel")
+    def _serialize_carousel(self, carousel: list[CarouselCard] | str) -> str:
+        if isinstance(carousel, str):
+            return carousel
+        payload = []
+        for card in carousel:
+            card_payload = card.to_payload()
+            if card.buttons is not None:
+                card_payload["buttons"] = [_button_payload(button) for button in card.buttons]
+            payload.append(card_payload)
+        return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
 class PixButtonMessage(BaseMessage):
-    """Mensagem com botão PIX."""
+    """Mensagem com botao PIX."""
 
-    pix_type: str = Field(alias="pixType")
+    pix_type: PixType = Field(alias="pixType")
     pix_key: str = Field(alias="pixKey")
     pix_name: str | None = Field(default=None, alias="pixName")
     async_: bool | None = Field(default=None, alias="async")
     read_chat: bool | None = Field(default=None, alias="readchat")
     read_messages: bool | None = Field(default=None, alias="readmessages")
-    mentions: list[str] | None = None
+    mentions: str | None = None
     track_source: str | None = None
     track_id: str | None = None
 
 
-class RequestPaymentMessage(BaseModel):
-    """Mensagem de solicitação de pagamento."""
+class RequestPaymentMessage(BaseMessage):
+    """Mensagem de solicitacao de pagamento."""
 
-    number: str
     amount: float
     pix_key: str | None = Field(default=None, alias="pixKey")
-    pix_type: str | None = Field(default=None, alias="pixType")
+    pix_type: PixType | None = Field(default=None, alias="pixType")
     item_name: str | None = Field(default=None, alias="itemName")
     invoice_number: str | None = Field(default=None, alias="invoiceNumber")
     title: str | None = None
@@ -211,6 +295,6 @@ class StatusMessage(BaseModel):
 
     type: StatusType
     text: str | None = None
-    background_color: str | None = None
+    background_color: StatusBackgroundColor | None = None
     font: FontType | None = None
     file: str | None = None

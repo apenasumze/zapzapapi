@@ -13,6 +13,7 @@ from zapzapapi.models.message import (
     MediaMessage,
     PixButtonMessage,
     PollMessage,
+    ReactionMessage,
     RequestPaymentMessage,
     StatusMessage,
     TextMessage,
@@ -82,6 +83,11 @@ class MessagesService(BaseService):
         """Solicita um pagamento."""
 
         return self._transport.post(f"/api/v1/{instance_id}/send/request-payment", message)
+
+    def send_reaction(self, instance_id: str, message: ReactionMessage) -> JsonValue:
+        """Envia uma reacao com emoji para uma mensagem existente."""
+
+        return self._transport.post(f"/api/v1/{instance_id}/message/react", message)
 
     def send_status(self, instance_id: str, message: StatusMessage) -> JsonValue:
         """Envia um status/story."""

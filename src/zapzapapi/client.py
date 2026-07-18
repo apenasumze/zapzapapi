@@ -28,7 +28,7 @@ class ZapZapClient:
         api_key: str,
         api_secret: str,
         base_url: str = "https://app.zapzapapi.com",
-        timeout: float = 30.0,
+        timeout: float = 15.0,
         http_client: httpx.Client | None = None,
     ) -> None:
         self.config = ZapZapConfig(

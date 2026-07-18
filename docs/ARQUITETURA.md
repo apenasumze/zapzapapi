@@ -26,6 +26,8 @@ contracts/models separados.
 - Docstrings públicas devem seguir o padrão Google e estar em português.
 - Campos externos da API devem ser preservados por alias, sem forçar nomes Python no payload.
 - A conversão de model para payload deve ser determinística, sem lógica de negócio escondida.
+- Toda consolidacao aprovada de contrato publico deve ser refletida no `README.md`, com exemplo de
+  uso equivalente ao model/servico implementado.
 
 ## Não objetivos
 
@@ -142,6 +144,36 @@ BaseMessage
   PollMessage
   LocationMessage
 ```
+
+Consolidacoes aprovadas para mensagens:
+
+- `BaseMessage` e a base comum de mensagens destinadas a um contato e deve concentrar `number`,
+  `delay`, `replyid` e `quoted`.
+- `delay` tem padrao `1000` nos endpoints de envio que aceitam esse campo.
+- Campos Python amigaveis devem preservar o payload externo via alias. Exemplos: `caption` para
+  `text`, `file_name` para `docName`, `phone_number` para `phoneNumber`, `reply_id` para `replyid`,
+  `copy_code` para `copy` e `message_id` para `id`.
+- `number` representa sempre o destinatario da mensagem. Em envio de contato, `phoneNumber`
+  representa o numero do contato enviado.
+- Enums devem ser usados quando a API/painel define valores fechados, como `MediaType`,
+  `StatusType`, `FontType`, `StatusBackgroundColor` e `PixType`.
+- Mensagens interativas que recebem campos string-JSON na API podem aceitar objetos tipados no SDK,
+  desde que `to_payload()` serialize de forma deterministica para o formato externo documentado.
+- Reacao a mensagem usa `ReactionMessage` e o endpoint `/api/v1/{instanceId}/message/react`; o
+  `message_id` publico do model deve gerar `id` no payload.
+
+### Documentacao Publica
+
+O `README.md` e a documentacao publica do contrato ja consolidado. Ao aprovar ou alterar um model,
+servico, alias, enum ou fluxo de uso publico, a mesma consolidacao deve ser registrada no README na
+mesma etapa da implementacao.
+
+O README deve:
+
+- mostrar import, construcao do model e chamada do servico;
+- citar aliases relevantes quando o nome Python divergir do payload externo;
+- separar funcionalidades validadas de itens em investigacao;
+- limitar o escopo ao que ja foi implementado e validado.
 
 ### Transporte HTTP
 

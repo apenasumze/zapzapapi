@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
-
 from zapzapapi.models.base import BaseModel
 
 
 class AccountResponse(BaseModel):
     """Dados principais da conta ZapZapApi."""
 
-    id: str
-    name: str | None = None
-    email: str | None = None
-    balance: Decimal | str | None = None
-    billing_day: int | None = None
-    status: str | None = None
+    id: str # Identificador único da conta
+    name: str # Nome da conta
+    email: str # Email da conta
+    balance: str # Saldo da conta.
+    billing_day: int # Dia do mês em que  é feito a cobrança da fatura
+    status: str # Status da conta
 

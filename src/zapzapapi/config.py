@@ -19,7 +19,7 @@ class ZapZapConfig:
     api_key: str
     api_secret: str
     base_url: str = "https://app.zapzapapi.com"
-    timeout: float = 30.0
+    timeout: float = 15.0
 
     def normalized_base_url(self) -> str:
         """Retorna a URL base sem barra final."""
