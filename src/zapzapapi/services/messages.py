@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from zapzapapi.models.base import JsonValue
-from zapzapapi.models.message import (
+from zapzapapi.models.chat import ReactionMessage
+from zapzapapi.models.messages import (
     ButtonsMessage,
     CarouselMessage,
     ContactMessage,
@@ -13,7 +14,6 @@ from zapzapapi.models.message import (
     MediaMessage,
     PixButtonMessage,
     PollMessage,
-    ReactionMessage,
     RequestPaymentMessage,
     StatusMessage,
     TextMessage,

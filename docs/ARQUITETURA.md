@@ -26,6 +26,16 @@ contracts/models separados.
 - Docstrings públicas devem seguir o padrão Google e estar em português.
 - Campos externos da API devem ser preservados por alias, sem forçar nomes Python no payload.
 - A conversão de model para payload deve ser determinística, sem lógica de negócio escondida.
+- Contratos validados contra a API real prevalecem sobre exemplos antigos do OpenAPI. Em contatos,
+  grupos, leitura de mensagens, botoes e carrossel, `numbers`, `participants`, `message_ids`,
+  `buttons` e `carousel` saem como array JSON real; strings JSON ou CSV podem ser aceitas apenas
+  como compatibilidade de entrada e normalizadas pelo model.
+- Botoes comuns e botoes de carrossel possuem contratos separados: `Button` modela `/send/buttons`,
+  onde o tipo e inferido por exatamente uma acao entre `id`, `url`, `phone` ou `copy`; `Button`
+  deve expor factories publicas para os quatro formatos confirmados (`reply`, `link`, `call` e
+  `copy_text`) sem adicionar um campo `type` inexistente no payload externo; `CarouselButton`
+  modela botoes dentro de `CarouselCard`, com `CarouselButtonType.REPLY` como unico valor
+  confirmado.
 - Toda consolidacao aprovada de contrato publico deve ser refletida no `README.md`, com exemplo de
   uso equivalente ao model/servico implementado.
 
@@ -51,6 +61,7 @@ zapzapapi/
     messages.py
     chats.py
     contacts.py
+    profile.py
     groups.py
     newsletters.py
     campaigns.py
@@ -71,6 +82,7 @@ zapzapapi/
     message.py
     chat.py
     contact.py
+    profile.py
     group.py
     newsletter.py
     campaign.py
@@ -107,7 +119,8 @@ Cada serviço representa um domínio funcional da documentação:
 - `instances`: criação, listagem, detalhes, QR Code e webhook administrativo.
 - `messages`: envio de texto, mídia, botões, lista, enquete, localização, PIX e pagamento.
 - `chats`: busca, leitura, notas, bloqueio, arquivamento e operações de mensagem existente.
-- `contacts`: contatos, perfil e verificação de número.
+- `contacts`: contatos, agenda, verificacao de numero e detalhes publicos de contato/chat.
+- `profile`: nome e foto do perfil publico da instancia conectada.
 - `groups`: grupos e comunidades.
 - `newsletters`: newsletters e canais.
 - `campaigns`: disparos e fila de campanhas.
@@ -159,6 +172,10 @@ Consolidacoes aprovadas para mensagens:
   `StatusType`, `FontType`, `StatusBackgroundColor` e `PixType`.
 - Mensagens interativas que recebem campos string-JSON na API podem aceitar objetos tipados no SDK,
   desde que `to_payload()` serialize de forma deterministica para o formato externo documentado.
+- Listas usam `ListMessage.category` como secao inicial e `ListChoice` como item agnostico de
+  formatacao; o payload externo de `choices` deve sair como array JSON real, com a categoria no
+  formato `[Categoria]` e cada item no formato `item|id|description`, omitindo partes opcionais
+  conforme os campos disponiveis.
 - Reacao a mensagem usa `ReactionMessage` e o endpoint `/api/v1/{instanceId}/message/react`; o
   `message_id` publico do model deve gerar `id` no payload.
 

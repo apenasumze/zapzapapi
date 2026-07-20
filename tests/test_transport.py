@@ -24,7 +24,17 @@ from zapzapapi.models.instance import (
     TestInstanceWebhookResponse,
     UpdateInstanceRequest,
 )
-from zapzapapi.models.message import ReactionMessage, TextMessage
+from zapzapapi.models.messages import (
+    Button,
+    ButtonsMessage,
+    CarouselButton,
+    CarouselCard,
+    CarouselMessage,
+    ListChoice,
+    ListMessage,
+    ReactionMessage,
+    TextMessage,
+)
 
 
 def test_transport_sends_single_request_with_auth_headers() -> None:
@@ -102,6 +112,128 @@ def test_transport_sends_reaction_to_message_react_endpoint() -> None:
         "number": "5511999999999",
         "id": "5511991515364:2A6E2F02CE4125FDBA1B",
         "emoji": "\U0001f44d",
+    }
+
+
+def test_transport_sends_buttons_as_json_array() -> None:
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json={"messageType": "NativeFlowMessage", "status": "Pending"})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = ZapZapClient(api_key="key", api_secret="secret", http_client=http_client)
+
+    response = client.messages.send_buttons(
+        "instance-1",
+        ButtonsMessage(
+            number="5511999999999",
+            text="Escolha:",
+            buttons=[
+                Button.reply(text="Sim", id="yes"),
+                Button.link(text="Site do Google", url="https://google.com"),
+                Button.copy_text(text="Ligar", copy_code="+5511999999999"),
+            ],
+            image="https://picsum.photos/seed/zapzap-buttons/900/500",
+        ),
+    )
+
+    assert response == {"messageType": "NativeFlowMessage", "status": "Pending"}
+    assert len(calls) == 1
+    assert calls[0].method == "POST"
+    assert calls[0].url.path == "/api/v1/instance-1/send/buttons"
+    assert json.loads(calls[0].read()) == {
+        "number": "5511999999999",
+        "delay": 1000,
+        "text": "Escolha:",
+        "buttons": [
+            {"text": "Sim", "id": "yes"},
+            {"text": "Site do Google", "url": "https://google.com"},
+            {"text": "Ligar", "copy": "+5511999999999"},
+        ],
+        "image": "https://picsum.photos/seed/zapzap-buttons/900/500",
+    }
+
+
+def test_transport_sends_carousel_as_json_array() -> None:
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json={"messageType": "InteractiveMessage", "status": "Pending"})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = ZapZapClient(api_key="key", api_secret="secret", http_client=http_client)
+
+    response = client.messages.send_carousel(
+        "instance-1",
+        CarouselMessage(
+            number="5511999999999",
+            text="Confira nossas opcoes:",
+            carousel=[
+                CarouselCard(
+                    text="Produto 1",
+                    image="https://example.com/img.jpg",
+                    buttons=[CarouselButton(text="Quero", id="produto_1")],
+                )
+            ],
+        ),
+    )
+
+    assert response == {"messageType": "InteractiveMessage", "status": "Pending"}
+    assert len(calls) == 1
+    assert calls[0].method == "POST"
+    assert calls[0].url.path == "/api/v1/instance-1/send/carousel"
+    assert json.loads(calls[0].read()) == {
+        "number": "5511999999999",
+        "delay": 1000,
+        "text": "Confira nossas opcoes:",
+        "carousel": [
+            {
+                "text": "Produto 1",
+                "image": "https://example.com/img.jpg",
+                "buttons": [{"type": "REPLY", "text": "Quero", "id": "produto_1"}],
+            }
+        ],
+    }
+
+
+def test_transport_sends_list_choices_as_json_array() -> None:
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json={"messageType": "ListMessage", "status": "Pending"})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = ZapZapClient(api_key="key", api_secret="secret", http_client=http_client)
+
+    response = client.messages.send_list(
+        "instance-1",
+        ListMessage(
+            number="5511999999999",
+            text="Escolha uma opcao:",
+            category="Produtos",
+            choices=[
+                ListChoice(item="Camiseta", id="p1", description="R$ 50"),
+                ListChoice(item="Calca", id="p2", description="R$ 120"),
+            ],
+            list_button="Opcoes",
+            footer_text="Gostou?",
+        ),
+    )
+
+    assert response == {"messageType": "ListMessage", "status": "Pending"}
+    assert len(calls) == 1
+    assert calls[0].method == "POST"
+    assert calls[0].url.path == "/api/v1/instance-1/send/list"
+    assert json.loads(calls[0].read()) == {
+        "number": "5511999999999",
+        "text": "Escolha uma opcao:",
+        "choices": ["[Produtos]", "Camiseta|p1|R$ 50", "Calca|p2|R$ 120"],
+        "listButton": "Opcoes",
+        "footerText": "Gostou?",
     }
 
 

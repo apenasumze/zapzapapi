@@ -205,7 +205,7 @@ Campos opcionais com valor `None` nao entram no payload.
 ### Mensagem De Texto
 
 ```python
-from zapzapapi.models.message import TextMessage
+from zapzapapi.models.messages import TextMessage
 
 message = TextMessage(
     number=number,
@@ -258,7 +258,7 @@ message = TextMessage(
 Com citacao completa:
 
 ```python
-from zapzapapi.models.message import QuotedMessage, TextMessage
+from zapzapapi.models.messages import QuotedMessage, TextMessage
 
 quoted = QuotedMessage(
     key={
@@ -279,7 +279,7 @@ message = TextMessage(
 ### Mensagem De Midia
 
 ```python
-from zapzapapi.models.message import MediaMessage, MediaType
+from zapzapapi.models.messages import MediaMessage, MediaType
 
 message = MediaMessage(
     number=number,
@@ -322,7 +322,7 @@ message = MediaMessage(
 ### Contato
 
 ```python
-from zapzapapi.models.message import ContactMessage
+from zapzapapi.models.messages import ContactMessage
 
 message = ContactMessage(
     number=number,
@@ -343,7 +343,7 @@ Neste contrato:
 ### Localizacao
 
 ```python
-from zapzapapi.models.message import LocationMessage
+from zapzapapi.models.messages import LocationMessage
 
 message = LocationMessage(
     number=number,
@@ -359,7 +359,7 @@ response = client.messages.send_location(instance_id, message)
 ### Solicitar Localizacao
 
 ```python
-from zapzapapi.models.message import LocationButtonMessage
+from zapzapapi.models.messages import LocationButtonMessage
 
 message = LocationButtonMessage(
     number=number,
@@ -372,16 +372,15 @@ response = client.messages.request_location(instance_id, message)
 ### Botoes
 
 ```python
-from zapzapapi.models.message import Button, ButtonsMessage
+from zapzapapi.models.messages import Button, ButtonsMessage
 
 message = ButtonsMessage(
     number=number,
     text="Como podemos ajudar?",
     buttons=[
-        Button(text="Sim", id="yes"),
-        Button(text="Site", url="https://exemplo.com"),
-        Button(text="Ligar", phone="+5511999999999"),
-        Button(text="Copiar", copy_code="ABC123"),
+        Button.reply(text="Sim", id="yes"),
+        Button.link(text="Site", url="https://exemplo.com"),
+        Button.copy_text(text="Copiar cupom", copy_code="ABC123"),
     ],
     footer="Escolha uma opcao",
 )
@@ -389,7 +388,13 @@ message = ButtonsMessage(
 response = client.messages.send_buttons(instance_id, message)
 ```
 
-O SDK aceita lista de `Button` e serializa para a string JSON esperada pela API.
+O SDK aceita ate 3 botoes e envia `buttons` como array JSON real, igual ao payload validado na
+aplicacao web.
+Use `Button.reply()` para `text + id`, `Button.link()` para `text + url`,
+`Button.call()` para `text + phone` e `Button.copy_text()` para `text + copy`.
+O construtor direto tambem e aceito, desde que exatamente uma acao seja informada:
+`id`, `url`, `phone` ou `copy_code`.
+O SDK ainda aceita string JSON por compatibilidade e normaliza para lista antes do envio.
 
 Observacao: durante validacao real, endpoints interativos como botoes, lista e carrossel podem
 retornar `invalid payload` dependendo do comportamento atual da API. A modelagem do SDK preserva o
@@ -398,33 +403,32 @@ contrato documentado e deixa a investigacao desses endpoints para etapa especifi
 ### Lista De Opcoes
 
 ```python
-from zapzapapi.models.message import ListMessage
+from zapzapapi.models.messages import ListChoice, ListMessage
 
 message = ListMessage(
     number=number,
     text="Escolha uma opcao:",
-    choices=["[Produtos]", "Camiseta|p1|R$ 50", "Calca|p2|R$ 120"],
-    list_button="Ver opcoes",
+    category="Produtos",
+    choices=[
+        ListChoice(item="Camiseta", id="p1", description="R$ 50"),
+        ListChoice(item="Calca", id="p2", description="R$ 120"),
+    ],
+    list_button="Opcoes",
+    footer_text="Gostou?",
 )
 
 response = client.messages.send_list(instance_id, message)
 ```
 
-Tambem e possivel enviar `choices` como string JSON ja pronta:
-
-```python
-message = ListMessage(
-    number=number,
-    text="Escolha uma opcao:",
-    choices='["[Produtos]","Camiseta|p1|R$ 50","Calca|p2|R$ 120"]',
-    list_button="Ver opcoes",
-)
-```
+`category` e inserido como primeiro elemento da lista final, no formato `[Produtos]`.
+Cada `ListChoice` gera uma string no formato `item|id|description`. Apenas `item` e obrigatorio;
+`id` e `description` podem ser omitidos quando a API permitir. O payload final envia `choices`
+como array JSON real. String JSON pronta ainda e aceita apenas como compatibilidade de entrada.
 
 ### Enquete
 
 ```python
-from zapzapapi.models.message import PollMessage
+from zapzapapi.models.messages import PollMessage
 
 message = PollMessage(
     number=number,
@@ -441,7 +445,7 @@ response = client.messages.send_poll(instance_id, message)
 ### Carrossel
 
 ```python
-from zapzapapi.models.message import Button, CarouselCard, CarouselMessage
+from zapzapapi.models.messages import CarouselButton, CarouselCard, CarouselMessage
 
 message = CarouselMessage(
     number=number,
@@ -450,7 +454,7 @@ message = CarouselMessage(
         CarouselCard(
             text="Produto 1",
             image="https://exemplo.com/img.jpg",
-            buttons=[Button(type="REPLY", text="Quero!", id="quero")],
+            buttons=[CarouselButton(text="Quero!", id="quero")],
         )
     ],
 )
@@ -458,12 +462,14 @@ message = CarouselMessage(
 response = client.messages.send_carousel(instance_id, message)
 ```
 
-Tambem e possivel enviar `carousel` como string JSON ja pronta.
+`carousel` deve ser informado como lista de `CarouselCard` e sai no payload como array JSON real.
+O SDK ainda aceita string JSON por compatibilidade e normaliza para lista antes do envio.
+O botao de carrossel usa `CarouselButton`; o tipo confirmado e `REPLY` e e aplicado por padrao.
 
 ### Botao PIX
 
 ```python
-from zapzapapi.models.message import PixButtonMessage, PixType
+from zapzapapi.models.messages import PixButtonMessage, PixType
 
 message = PixButtonMessage(
     number=number,
@@ -486,7 +492,7 @@ Tipos de chave PIX:
 ### Solicitar Pagamento
 
 ```python
-from zapzapapi.models.message import RequestPaymentMessage, PixType
+from zapzapapi.models.messages import RequestPaymentMessage, PixType
 
 message = RequestPaymentMessage(
     number=number,
@@ -507,7 +513,7 @@ A API exige pelo menos um metodo de pagamento: `pix_key`, `boleto_code`, `paymen
 ### Status / Story
 
 ```python
-from zapzapapi.models.message import FontType, StatusBackgroundColor, StatusMessage, StatusType
+from zapzapapi.models.messages import FontType, StatusBackgroundColor, StatusMessage, StatusType
 
 message = StatusMessage(
     type=StatusType.TEXT,
@@ -541,7 +547,7 @@ Cores de fundo de status:
 ### Reacao Com Emoji
 
 ```python
-from zapzapapi.models.message import ReactionMessage
+from zapzapapi.models.messages import ReactionMessage
 
 message = ReactionMessage(
     number=number,
@@ -555,7 +561,7 @@ response = client.messages.send_reaction(instance_id, message)
 Para reagir a uma mensagem enviada pela propria biblioteca:
 
 ```python
-from zapzapapi.models.message import ReactionMessage, TextMessage
+from zapzapapi.models.messages import ReactionMessage, TextMessage
 
 text_response = client.messages.send_text(
     instance_id,
@@ -574,6 +580,427 @@ reaction_response = client.messages.send_reaction(
 )
 ```
 
+## Conversas
+
+Operacoes sobre conversas e mensagens ja existentes ficam em `client.chats`. O envio de novas
+mensagens permanece em `client.messages`.
+
+### Buscar Conversas
+
+```python
+from zapzapapi.models.chat import FindChatsRequest
+
+chats = client.chats.find(
+    instance_id,
+    FindChatsRequest(
+        sort="-wa_lastMsgTimestamp",
+        limit=50,
+        wa_is_group=False,
+        lead_is_ticket_open=True,
+    ),
+)
+```
+
+Filtros booleanos aceitam `bool` no SDK e sao enviados como as strings `"true"` ou `"false"`
+esperadas pela API. Campos com nomes mistos preservam aliases do payload externo, por exemplo:
+
+- `wa_is_group` gera `wa_isGroup`.
+- `wa_contact_name` gera `wa_contactName`.
+- `lead_is_ticket_open` gera `lead_isTicketOpen`.
+
+### Marcar Conversa Como Lida
+
+```python
+from zapzapapi.models.chat import ReadChatRequest
+
+response = client.chats.read(
+    instance_id,
+    ReadChatRequest(number="5511999999999@s.whatsapp.net"),
+)
+```
+
+### Arquivar, Fixar, Silenciar E Bloquear
+
+```python
+from zapzapapi.models.chat import (
+    ArchiveChatRequest,
+    BlockChatRequest,
+    MuteChatRequest,
+    PinChatRequest,
+)
+
+client.chats.archive(
+    instance_id,
+    ArchiveChatRequest(number="5511999999999@s.whatsapp.net", archive=True),
+)
+client.chats.pin(
+    instance_id,
+    PinChatRequest(number="5511999999999@s.whatsapp.net", pin=False),
+)
+client.chats.mute(
+    instance_id,
+    MuteChatRequest(number="5511999999999@s.whatsapp.net", duration=86400000),
+)
+client.chats.block(
+    instance_id,
+    BlockChatRequest(number=number, block=True),
+)
+
+blocked = client.chats.blocklist(instance_id)
+```
+
+### Deletar Ou Limpar Conversa
+
+```python
+from zapzapapi.models.chat import DeleteChatRequest
+
+response = client.chats.delete(
+    instance_id,
+    DeleteChatRequest(
+        number=number,
+        delete_chat_db=True,
+        delete_messages_db=True,
+        clear_chat_whatsapp=True,
+    ),
+)
+```
+
+Aliases relevantes:
+
+- `delete_chat_db` gera `deleteChatDB`.
+- `delete_messages_db` gera `deleteMessagesDB`.
+- `delete_chat_whatsapp` gera `deleteChatWhatsApp`.
+- `clear_chat_whatsapp` gera `clearChatWhatsApp`.
+
+### Notas Do Chat
+
+```python
+from zapzapapi.models.chat import ChatNotesRequest, EditChatNotesRequest, RefreshChatNotesRequest
+
+notes = client.chats.notes(
+    instance_id,
+    ChatNotesRequest(number="5511999999999@s.whatsapp.net"),
+)
+
+updated = client.chats.edit_notes(
+    instance_id,
+    EditChatNotesRequest(
+        number="5511999999999@s.whatsapp.net",
+        notes="Cliente prefere contato no periodo da tarde",
+    ),
+)
+
+refreshed = client.chats.refresh_notes(
+    instance_id,
+    RefreshChatNotesRequest(number="5511999999999@s.whatsapp.net", force=False),
+)
+```
+
+### Historico E Operacoes De Mensagem
+
+```python
+from zapzapapi.models.chat import (
+    DeleteMessageRequest,
+    DownloadMessageRequest,
+    EditMessageRequest,
+    FindMessagesRequest,
+    HistorySyncRequest,
+    MarkMessagesReadRequest,
+)
+
+messages = client.chats.find_messages(
+    instance_id,
+    FindMessagesRequest(chat_id="5511999999999@s.whatsapp.net", limit=100),
+)
+
+edited = client.chats.edit_message(
+    instance_id,
+    EditMessageRequest(
+        message_id="ABCDEF123456",
+        number=number,
+        text="Texto corrigido.",
+    ),
+)
+
+deleted = client.chats.delete_message(
+    instance_id,
+    DeleteMessageRequest(message_id="ABCDEF123456", number=number),
+)
+
+media = client.chats.download_message(
+    instance_id,
+    DownloadMessageRequest(
+        message_id="7EB0F01D7244B421048F0706368376E0",
+        return_link=True,
+    ),
+)
+
+read = client.chats.mark_messages_read(
+    instance_id,
+    MarkMessagesReadRequest(message_ids=["3EB0538DA65A59F6D8A251"]),
+)
+
+sync = client.chats.history_sync(
+    instance_id,
+    HistorySyncRequest(
+        message_id="3EB01234567890ABCDEF",
+        number="5511999999999@s.whatsapp.net",
+        count=20,
+    ),
+)
+```
+
+`message_id` gera `id` nos endpoints de mensagem, exceto em `HistorySyncRequest`, onde gera
+`messageid`. `chat_id` gera `chatid`. `MarkMessagesReadRequest.message_ids` deve ser informado
+como lista Python e sai no payload como array JSON real.
+
+### Indicador De Digitacao
+
+```python
+from zapzapapi.models.chat import PresenceRequest, PresenceType
+
+response = client.chats.presence(
+    instance_id,
+    PresenceRequest(
+        number=number,
+        presence=PresenceType.COMPOSING,
+        delay=3000,
+    ),
+)
+```
+
+Tipos de presenca:
+
+- `PresenceType.COMPOSING`
+- `PresenceType.RECORDING`
+- `PresenceType.PAUSED`
+
+### Reacao Pelo Dominio De Conversas
+
+```python
+from zapzapapi.models.chat import ReactionMessage
+
+response = client.chats.react_message(
+    instance_id,
+    ReactionMessage(
+        number=number,
+        message_id="5511991515364:2A6E2F02CE4125FDBA1B",
+        emoji="\U0001f44d",
+    ),
+)
+```
+
+O endpoint documentado pela API para reacao e `/api/v1/{instanceId}/message/react`. Por
+compatibilidade, `client.messages.send_reaction(...)` continua disponivel e usa o mesmo endpoint em
+uma unica chamada.
+
+## Contatos
+
+Operacoes de agenda, verificacao de numero e detalhes publicos ficam em `client.contacts`.
+Os endpoints reais de verificacao e detalhes usam o prefixo HTTP `/chat/*`, mas permanecem neste
+dominio por tratarem de identidade de contato/chat, nao de manipulacao de conversa.
+
+### Verificar Numeros
+
+```python
+from zapzapapi.models.contacts import CheckNumbersRequest
+
+response = client.contacts.check_numbers(
+    instance_id,
+    CheckNumbersRequest(numbers=["5511999999999", "5521888888888"]),
+)
+```
+
+`numbers` deve ser enviado como lista de strings. O SDK ainda aceita string JSON ou CSV por
+compatibilidade e normaliza para array JSON, que e o formato aceito pela API real.
+
+### Detalhes Do Contato Ou Grupo
+
+```python
+from zapzapapi.models.contacts import ContactDetailsRequest
+
+details = client.contacts.details(
+    instance_id,
+    ContactDetailsRequest(number="5511999999999", preview=True),
+)
+```
+
+`preview` aceita `bool` no SDK e e enviado como `"true"` ou `"false"`.
+
+### Agenda De Contatos
+
+```python
+from zapzapapi.models.contacts import AddContactRequest, ListContactsRequest, RemoveContactRequest
+
+created = client.contacts.add(
+    instance_id,
+    AddContactRequest(phone="5511999999999", name="Joao Silva"),
+)
+
+removed = client.contacts.remove(
+    instance_id,
+    RemoveContactRequest(number="5511999999999"),
+)
+
+fast_contacts = client.contacts.list_fast(instance_id)
+
+contacts = client.contacts.list(
+    instance_id,
+    ListContactsRequest(limit=50, offset=0),
+)
+```
+
+## Perfil Da Instancia
+
+Operacoes sobre nome e foto do perfil publico da instancia conectada ficam em `client.profile`.
+Este dominio nao representa o perfil de um contato.
+
+```python
+from zapzapapi.models.profile import UpdateProfileImageRequest, UpdateProfileNameRequest
+
+updated_image = client.profile.update_image(
+    instance_id,
+    UpdateProfileImageRequest(image="https://exemplo.com/logo.jpg"),
+)
+
+updated_name = client.profile.update_name(
+    instance_id,
+    UpdateProfileNameRequest(name="Minha Empresa"),
+)
+```
+
+Para remover a foto, envie `image="remove"`, conforme o contrato da API.
+
+## Grupos
+
+Operacoes de grupos e comunidades ficam em `client.groups`.
+
+### Criar E Consultar Grupos
+
+```python
+from zapzapapi.models.groups import (
+    CreateGroupRequest,
+    GroupInfoRequest,
+    GroupInviteInfoRequest,
+    JoinGroupRequest,
+    LeaveGroupRequest,
+    ListGroupsRequest,
+)
+
+created = client.groups.create(
+    instance_id,
+    CreateGroupRequest(
+        name="Meu Time",
+        participants=["5511999990001", "5511999990002"],
+    ),
+)
+
+info = client.groups.info(
+    instance_id,
+    GroupInfoRequest(group_jid="120363000000000000@g.us", get_invite_link=True),
+)
+
+invite_info = client.groups.invite_info(
+    instance_id,
+    GroupInviteInfoRequest(invite_code="ABC123"),
+)
+
+joined = client.groups.join(
+    instance_id,
+    JoinGroupRequest(invite_code="https://chat.whatsapp.com/ABC123"),
+)
+
+left = client.groups.leave(
+    instance_id,
+    LeaveGroupRequest(group_jid="120363000000000000@g.us"),
+)
+
+groups = client.groups.list(instance_id)
+
+groups_with_participants = client.groups.search(
+    instance_id,
+    ListGroupsRequest(get_participants=True),
+)
+```
+
+Aliases relevantes:
+
+- `group_jid` gera `groupjid`.
+- `invite_code` gera `invitecode`.
+- `get_invite_link` gera `getInviteLink`.
+- `get_participants` gera `getParticipants`.
+
+`participants` deve ser enviado como lista de strings. O SDK ainda aceita string JSON ou CSV por
+compatibilidade e normaliza para array JSON, que e o formato aceito pela API real.
+
+### Administrar Grupos
+
+```python
+from zapzapapi.models.groups import (
+    GroupParticipantAction,
+    ResetGroupInviteCodeRequest,
+    UpdateGroupAnnounceRequest,
+    UpdateGroupDescriptionRequest,
+    UpdateGroupImageRequest,
+    UpdateGroupLockedRequest,
+    UpdateGroupNameRequest,
+    UpdateGroupParticipantsRequest,
+)
+
+group_jid = "120363000000000000@g.us"
+
+invite = client.groups.reset_invite_code(
+    instance_id,
+    ResetGroupInviteCodeRequest(group_jid=group_jid),
+)
+
+client.groups.update_announce(
+    instance_id,
+    UpdateGroupAnnounceRequest(group_jid=group_jid, announce=True),
+)
+
+client.groups.update_description(
+    instance_id,
+    UpdateGroupDescriptionRequest(group_jid=group_jid, description="Descricao do grupo"),
+)
+
+client.groups.update_image(
+    instance_id,
+    UpdateGroupImageRequest(group_jid=group_jid, image="remove"),
+)
+
+client.groups.update_locked(
+    instance_id,
+    UpdateGroupLockedRequest(group_jid=group_jid, locked=False),
+)
+
+client.groups.update_name(
+    instance_id,
+    UpdateGroupNameRequest(group_jid=group_jid, name="Novo Nome"),
+)
+
+client.groups.update_participants(
+    instance_id,
+    UpdateGroupParticipantsRequest(
+        group_jid=group_jid,
+        action=GroupParticipantAction.ADD,
+        participants=["5511999990003"],
+    ),
+)
+```
+
+`announce`, `locked`, `get_invite_link` e `get_participants` aceitam `bool` no SDK e sao enviados
+como as strings `"true"` ou `"false"`.
+
+Acoes confirmadas para participantes:
+
+- `GroupParticipantAction.ADD`
+- `GroupParticipantAction.REMOVE`
+- `GroupParticipantAction.PROMOTE`
+- `GroupParticipantAction.DEMOTE`
+- `GroupParticipantAction.APPROVE`
+- `GroupParticipantAction.REJECT`
+
 ## Validacao Local
 
 ```powershell
@@ -590,7 +1017,11 @@ Este README documenta apenas o que ja foi consolidado na biblioteca:
 - conta;
 - instancias basicas;
 - envio de mensagens;
-- reacao a mensagem.
+- reacao a mensagem;
+- conversas e operacoes sobre mensagens existentes.
+- contatos e verificacao de numeros;
+- perfil da instancia conectada;
+- grupos e comunidades.
 
-Operacoes avancadas de conversas, contatos, grupos, webhooks, campanhas, filas e outros dominios
-devem ser documentadas conforme forem implementadas e validadas.
+Operacoes de webhooks, campanhas, filas e outros dominios devem ser documentadas conforme forem
+implementadas e validadas.
